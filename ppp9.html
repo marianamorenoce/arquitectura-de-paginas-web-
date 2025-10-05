@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TubePlay — Explora videos</title>
+  <meta name="description" content="Plantilla inspirada en la estructura de sitios de vídeo: header, buscador, barra lateral y grilla de videos. Código original y editable.">
+  <style>
+    /* Reset */
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;line-height:1.4;color:#111;background:#f9f9fb}
+    a{color:inherit;text-decoration:none}
+
+    /* Variables */
+    :root{
+      --bg:#ffffff;
+      --muted:#6b7280;
+      --accent:#ff4b4b; /* rojo suave similar en tono, no marca */
+      --surface:#ffffff;
+      --elev:0 6px 20px rgba(16,24,40,0.06);
+      --sidebar-width:260px;
+      --gap:16px;
+    }
+
+    /* Layout */
+    .app{min-height:100vh;display:flex;flex-direction:column}
+    header.app-header{height:64px;background:var(--surface);display:flex;align-items:center;gap:12px;padding:0 18px;border-bottom:1px solid #edf0f5;position:sticky;top:0;z-index:50}
+
+    /* Brand */
+    .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .brand .logo{width:36px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#ff7b7b,#ffa07a);color:white}
+    .brand .title{font-size:16px}
+
+    /* Search */
+    .search-wrap{flex:1;display:flex;justify-content:center}
+    .search{width:600px;max-width:100%;display:flex;align-items:center;gap:8px}
+    .search input{flex:1;padding:10px 12px;border-radius:6px;border:1px solid #e6e9ef;background:#f4f6fa}
+    .search button{padding:10px 14px;border-radius:6px;border:0;background:#efefef;cursor:pointer;font-weight:700}
+
+    /* Header icons */
+    .header-actions{display:flex;gap:12px;align-items:center}
+    .icon-btn{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:transparent;cursor:pointer;border:1px solid transparent}
+
+    /* Main area */
+    .main{display:flex;gap:var(--gap);padding:18px;align-items:flex-start}
+
+    /* Sidebar */
+    aside.sidebar{width:var(--sidebar-width);min-height:calc(100vh - 64px);background:transparent}
+    .nav-section{background:var(--surface);border-radius:8px;padding:10px;border:1px solid #f0f2f5;box-shadow:var(--elev)}
+    .nav-item{display:flex;gap:10px;align-items:center;padding:10px;border-radius:8px;color:var(--muted);cursor:pointer}
+    .nav-item:hover{background:#fbfbfd;color:#111}
+
+    /* Content */
+    .content{flex:1}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{padding:8px 12px;border-radius:999px;border:1px solid #eef0f6;background:#fff;color:var(--muted);cursor:pointer}
+
+    /* Video grid */
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+    .video-card{background:var(--surface);border-radius:10px;overflow:hidden;border:1px solid #f0f2f5}
+    .thumb{position:relative;padding-top:56.25%;background:linear-gradient(180deg,#e8eefc,#fef7f7);display:block}
+    .thumb .badge{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;border-radius:6px;font-size:12px}
+    .meta{display:flex;gap:10px;padding:12px}
+    .avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#c7d2fe,#fbcfe8);flex-shrink:0}
+    .meta .info{flex:1}
+    .meta .title{font-weight:700;font-size:14px;margin-bottom:6px}
+    .meta .sub{font-size:13px;color:var(--muted)}
+
+    /* Responsive */
+    @media (max-width:1200px){.grid{grid-template-columns:repeat(3,1fr)}}
+    @media (max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}aside.sidebar{display:none}.search{width:100%}.brand .title{display:none}}
+    @media (max-width:600px){.grid{grid-template-columns:1fr}.search input{padding:8px}.header-actions{display:none}}
+
+    /* Simple modal */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,12,20,0.5);z-index:100}
+    .modal.show{display:flex}
+    .player{width:min(1100px,95%);height:min(620px,80%);background:#000;border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+    .player .video-area{flex:1;background:linear-gradient(180deg,#000,#111);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
+    .player .close{padding:10px;text-align:right;background:#0b0b0b;color:#fff}
+    .player .close button{background:transparent;border:0;color:#fff;cursor:pointer}
+
+    /* tiny footer */
+    footer.app-footer{padding:18px;color:var(--muted);font-size:13px;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header" role="banner">
+      <div class="brand">
+        <div class="logo" aria-hidden>TP</div>
+        <div class="title">TubePlay</div>
+      </div>
+
+      <div class="search-wrap" role="search">
+        <form class="search" id="searchForm" onsubmit="event.preventDefault(); performSearch();">
+          <input id="q" placeholder="Buscar" aria-label="Buscar videos" />
+          <button type="submit">Buscar</button>
+          <button type="button" title="Micrófono" onclick="alert('Función de voz demo')">🎙️</button>
+        </form>
+      </div>
+
+      <div class="header-actions" role="navigation" aria-label="Acciones">
+        <button class="icon-btn" title="Subir" onclick="alert('Subir video — demo')">⬆️</button>
+        <button class="icon-btn" title="Notificaciones" onclick="alert('Notificaciones — demo')">🔔</button>
+        <button class="icon-btn" title="Cuenta" onclick="alert('Cuenta — demo')">👤</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <aside class="sidebar">
+        <div class="nav-section" aria-label="principal">
+          <div class="nav-item">🏠 Inicio</div>
+          <div class="nav-item">🔥 Explorar</div>
+          <div class="nav-item">📺 Suscripciones</div>
+          <div class="nav-item">📚 Biblioteca</div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="nav-section" aria-label="más">
+          <div style="font-weight:700;margin-bottom:6px;color:#111">Canales</div>
+          <div class="nav-item">🎨 Creativos</div>
+          <div class="nav-item">🎵 Música</div>
+          <div class="nav-item">🎮 Gaming</div>
+        </div>
+      </aside>
+
+      <section class="content">
+        <div class="toolbar">
+          <div class="chips">
+            <div class="chip">Todos</div>
+            <div class="chip">Hoy</div>
+            <div class="chip">En vivo</div>
+            <div class="chip">Populares</div>
+          </div>
+          <div class="muted">Mostrando 24 resultados</div>
+        </div>
+
+        <section class="grid" id="grid">
+          <!-- Video cards generated by JS -->
+        </section>
+
+      </section>
+    </main>
+
+    <footer class="app-footer">Plantilla original inspirada en plataformas de vídeo. No contiene código ni marcas de sitios reales.</footer>
+  </div>
+
+  <!-- Modal player -->
+  <div id="modal" class="modal" role="dialog" aria-hidden="true">
+    <div class="player" role="document">
+      <div class="close"><button onclick="closeModal()">Cerrar ✕</button></div>
+      <div class="video-area" id="videoArea">Reproducción de video (demo)</div>
+    </div>
+  </div>
+
+  <script>
+    /* Datos de ejemplo (ficticios) */
+    const videos = Array.from({length:24}).map((_,i)=>({
+      id: 'v'+(i+1),
+      title: `Video de ejemplo número ${i+1} — Título atractivo para vista previa`,
+      channel: `Canal ${((i%6)+1)}`,
+      views: Math.floor(Math.random()*980000)+1000,
+      duration: `${Math.floor(Math.random()*19)+1}:${Math.floor(Math.random()*59).toString().padStart(2,'0')}`
+    }));
+
+    const grid = document.getElementById('grid');
+
+    function numberFormat(n){
+      if(n>=1000000) return (n/1000000).toFixed(1)+'M vistas';
+      if(n>=1000) return (n/1000).toFixed(1)+'K vistas';
+      return n+' vistas';
+    }
+
+    function createCard(v){
+      const card = document.createElement('article');
+      card.className = 'video-card';
+      card.innerHTML = `
+        <a class="thumb" href="#" data-id="${v.id}">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;color:rgba(0,0,0,0.4);font-size:24px">📺</div>
+          <div class="badge">${v.duration}</div>
+        </a>
+        <div class="meta">
+          <div class="avatar" aria-hidden></div>
+          <div class="info">
+            <div class="title">${v.title}</div>
+            <div class="sub">${v.channel} • ${numberFormat(v.views)}</div>
+          </div>
+        </div>
+      `;
+      // click
+      card.querySelector('.thumb').addEventListener('click', (e)=>{e.preventDefault(); openModal(v);});
+      return card;
+    }
+
+    // Render
+    videos.forEach(v=>grid.appendChild(createCard(v)));
+
+    // Search simulation
+    function performSearch(){
+      const q = document.getElementById('q').value.trim().toLowerCase();
+      if(!q){
+        grid.innerHTML='';videos.forEach(v=>grid.appendChild(createCard(v)));return;
+      }
+      const filtered = videos.filter(v=>v.title.toLowerCase().includes(q) || v.channel.toLowerCase().includes(q));
+      grid.innerHTML='';(filtered.length?filtered:[]).forEach(v=>grid.appendChild(createCard(v)));
+    }
+
+    // Modal player
+    const modal = document.getElementById('modal');
+    const videoArea = document.getElementById('videoArea');
+    function openModal(v){
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden','false');
+      videoArea.textContent = `Reproduciendo: ${v.title} — ${v.channel}`;
+      // here you could embed a real <iframe> or <video>
+    }
+    function closeModal(){
+      modal.classList.remove('show');
+      modal.setAttribute('aria-hidden','true');
+      videoArea.textContent = 'Reproducción de video (demo)';
+    }
+
+    // Close modal on backdrop click
+    modal.addEventListener('click', (e)=>{ if(e.target===modal) closeModal(); });
+
+    // keyboard
+    document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeModal(); });
+  </script>
+</body>
+</html>
+
+
